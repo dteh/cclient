@@ -10,8 +10,8 @@ package main
 import (
     "log"
 
-    "github.com/refraction-networking/utls"
-    "github.com/x04/cclient"
+	"gitlab.com/yawning/utls.git"
+    "github.com/dteh/cclient"
 )
 
 func main() {
