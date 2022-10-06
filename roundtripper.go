@@ -21,8 +21,8 @@ var errProtocolNegotiated = errors.New("protocol negotiated")
 type roundTripper struct {
 	sync.Mutex
 
-	clientHelloId utls.ClientHelloID
-
+	clientHelloId     utls.ClientHelloID
+	customClientHello *utls.ClientHelloSpec
 	cachedConnections map[string]net.Conn
 	cachedTransports  map[string]http.RoundTripper
 
@@ -84,6 +84,12 @@ func (rt *roundTripper) dialTLS(ctx context.Context, network, addr string) (net.
 	}
 
 	conn := utls.UClient(rawConn, &utls.Config{ServerName: host}, rt.clientHelloId)
+	if rt.clientHelloId == utls.HelloCustom && rt.customClientHello != nil {
+		err = conn.ApplyPreset(rt.customClientHello)
+		if err != nil {
+			panic("couldn't apply custom hello")
+		}
+	}
 	if err = conn.Handshake(); err != nil {
 		_ = conn.Close()
 		return nil, err
@@ -123,12 +129,13 @@ func (rt *roundTripper) getDialTLSAddr(req *http.Request) string {
 	return net.JoinHostPort(req.URL.Host, "443") // we can assume port is 443 at this point
 }
 
-func newRoundTripper(clientHello utls.ClientHelloID, dialer ...proxy.ContextDialer) http.RoundTripper {
+func newRoundTripper(clientHello utls.ClientHelloID, customClientHello *utls.ClientHelloSpec, dialer ...proxy.ContextDialer) http.RoundTripper {
 	if len(dialer) > 0 {
 		return &roundTripper{
 			dialer: dialer[0],
 
-			clientHelloId: clientHello,
+			clientHelloId:     clientHello,
+			customClientHello: customClientHello,
 
 			cachedTransports:  make(map[string]http.RoundTripper),
 			cachedConnections: make(map[string]net.Conn),
@@ -137,7 +144,8 @@ func newRoundTripper(clientHello utls.ClientHelloID, dialer ...proxy.ContextDial
 		return &roundTripper{
 			dialer: proxy.Direct,
 
-			clientHelloId: clientHello,
+			clientHelloId:     clientHello,
+			customClientHello: customClientHello,
 
 			cachedTransports:  make(map[string]http.RoundTripper),
 			cachedConnections: make(map[string]net.Conn),
