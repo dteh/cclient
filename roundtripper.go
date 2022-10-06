@@ -13,7 +13,7 @@ import (
 
 	http "github.com/dteh/fhttp"
 	http2 "github.com/dteh/fhttp/http2"
-	utls "gitlab.com/yawning/utls.git"
+	utls "github.com/refraction-networking/utls"
 )
 
 var errProtocolNegotiated = errors.New("protocol negotiated")

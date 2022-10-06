@@ -10,7 +10,7 @@ package main
 import (
     "log"
 
-	"gitlab.com/yawning/utls.git"
+	"github.com/refraction-networking/utls"
     "github.com/dteh/cclient"
 )
 
