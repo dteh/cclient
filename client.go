@@ -7,15 +7,23 @@ import (
 	utls "github.com/refraction-networking/utls"
 )
 
-func NewClient(clientHello utls.ClientHelloID, customClientHello []byte, proxyUrl ...string) (http.Client, error) {
+type NewClientSettings struct {
+	CustomClientHello  []byte
+	InsecureSkipVerify bool
+
+	customClientHello *utls.ClientHelloSpec
+}
+
+func NewClient(clientHello utls.ClientHelloID, settings NewClientSettings, proxyUrl ...string) (http.Client, error) {
 	var gen *utls.ClientHelloSpec
 	var err error
-	if clientHello == utls.HelloCustom && len(customClientHello) > 0 {
+	if clientHello == utls.HelloCustom && len(settings.CustomClientHello) > 0 {
 		f := utls.Fingerprinter{}
-		gen, err = f.FingerprintClientHello(customClientHello)
+		gen, err = f.FingerprintClientHello(settings.CustomClientHello)
 		if err != nil {
 			return http.Client{}, err
 		}
+		settings.customClientHello = gen
 	}
 
 	if len(proxyUrl) > 0 && len(proxyUrl[0]) > 0 {
@@ -24,11 +32,11 @@ func NewClient(clientHello utls.ClientHelloID, customClientHello []byte, proxyUr
 			return http.Client{}, err
 		}
 		return http.Client{
-			Transport: newRoundTripper(clientHello, gen, dialer),
+			Transport: newRoundTripper(clientHello, settings, dialer),
 		}, nil
 	} else {
 		return http.Client{
-			Transport: newRoundTripper(clientHello, gen, proxy.Direct),
+			Transport: newRoundTripper(clientHello, settings, proxy.Direct),
 		}, nil
 	}
 }

@@ -27,6 +27,8 @@ type roundTripper struct {
 	cachedTransports  map[string]http.RoundTripper
 
 	dialer proxy.ContextDialer
+
+	insecureSkipVerify bool
 }
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -83,7 +85,7 @@ func (rt *roundTripper) dialTLS(ctx context.Context, network, addr string) (net.
 		host = addr
 	}
 
-	conn := utls.UClient(rawConn, &utls.Config{ServerName: host}, rt.clientHelloId)
+	conn := utls.UClient(rawConn, &utls.Config{ServerName: host, InsecureSkipVerify: rt.insecureSkipVerify}, rt.clientHelloId)
 	if rt.clientHelloId == utls.HelloCustom && rt.customClientHello != nil {
 		err = conn.ApplyPreset(rt.customClientHello)
 		if err != nil {
@@ -129,13 +131,14 @@ func (rt *roundTripper) getDialTLSAddr(req *http.Request) string {
 	return net.JoinHostPort(req.URL.Host, "443") // we can assume port is 443 at this point
 }
 
-func newRoundTripper(clientHello utls.ClientHelloID, customClientHello *utls.ClientHelloSpec, dialer ...proxy.ContextDialer) http.RoundTripper {
+func newRoundTripper(clientHello utls.ClientHelloID, settings NewClientSettings, dialer ...proxy.ContextDialer) http.RoundTripper {
 	if len(dialer) > 0 {
 		return &roundTripper{
 			dialer: dialer[0],
 
-			clientHelloId:     clientHello,
-			customClientHello: customClientHello,
+			clientHelloId:      clientHello,
+			customClientHello:  settings.customClientHello,
+			insecureSkipVerify: settings.InsecureSkipVerify,
 
 			cachedTransports:  make(map[string]http.RoundTripper),
 			cachedConnections: make(map[string]net.Conn),
@@ -144,8 +147,9 @@ func newRoundTripper(clientHello utls.ClientHelloID, customClientHello *utls.Cli
 		return &roundTripper{
 			dialer: proxy.Direct,
 
-			clientHelloId:     clientHello,
-			customClientHello: customClientHello,
+			clientHelloId:      clientHello,
+			customClientHello:  settings.customClientHello,
+			insecureSkipVerify: settings.InsecureSkipVerify,
 
 			cachedTransports:  make(map[string]http.RoundTripper),
 			cachedConnections: make(map[string]net.Conn),
