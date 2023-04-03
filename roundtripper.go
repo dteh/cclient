@@ -131,28 +131,30 @@ func (rt *roundTripper) getDialTLSAddr(req *http.Request) string {
 	return net.JoinHostPort(req.URL.Host, "443") // we can assume port is 443 at this point
 }
 
-func newRoundTripper(clientHello utls.ClientHelloID, settings NewClientSettings, dialer ...proxy.ContextDialer) http.RoundTripper {
+func newRoundTripper(clientHello utls.ClientHelloID, settings *NewClientSettings, dialer ...proxy.ContextDialer) http.RoundTripper {
+	var rt *roundTripper
 	if len(dialer) > 0 {
-		return &roundTripper{
+		rt = &roundTripper{
 			dialer: dialer[0],
 
-			clientHelloId:      clientHello,
-			customClientHello:  settings.customClientHello,
-			insecureSkipVerify: settings.InsecureSkipVerify,
+			clientHelloId: clientHello,
 
 			cachedTransports:  make(map[string]http.RoundTripper),
 			cachedConnections: make(map[string]net.Conn),
 		}
 	} else {
-		return &roundTripper{
+		rt = &roundTripper{
 			dialer: proxy.Direct,
 
-			clientHelloId:      clientHello,
-			customClientHello:  settings.customClientHello,
-			insecureSkipVerify: settings.InsecureSkipVerify,
+			clientHelloId: clientHello,
 
 			cachedTransports:  make(map[string]http.RoundTripper),
 			cachedConnections: make(map[string]net.Conn),
 		}
 	}
+	if settings != nil {
+		rt.customClientHello = settings.customClientHello
+		rt.insecureSkipVerify = settings.InsecureSkipVerify
+	}
+	return rt
 }

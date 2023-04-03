@@ -14,7 +14,7 @@ type NewClientSettings struct {
 	customClientHello *utls.ClientHelloSpec
 }
 
-func NewClient(clientHello utls.ClientHelloID, settings NewClientSettings, proxyUrl ...string) (http.Client, error) {
+func NewClient(clientHello utls.ClientHelloID, settings *NewClientSettings, proxyUrl ...string) (http.Client, error) {
 	var gen *utls.ClientHelloSpec
 	var err error
 	if clientHello == utls.HelloCustom && len(settings.CustomClientHello) > 0 {
