@@ -51,12 +51,13 @@ func (rt *roundTripper) getTransport(req *http.Request, addr string) error {
 		return fmt.Errorf("invalid URL scheme: [%v]", req.URL.Scheme)
 	}
 
-	_, err := rt.dialTLS(context.Background(), "tcp", addr)
+	c, err := rt.dialTLS(context.Background(), "tcp", addr)
 	switch err {
 	case errProtocolNegotiated:
 	case nil:
 		// Should never happen.
-		panic("dialTLS returned no error when determining cachedTransports")
+		// panic("dialTLS returned no error when determining cachedTransports")
+		panic(fmt.Sprintf("dialTLS returned no error when determining cachedTransports - returned type: %T", c))
 	default:
 		return err
 	}
