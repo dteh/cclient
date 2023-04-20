@@ -44,9 +44,11 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 func (rt *roundTripper) getTransport(req *http.Request, addr string) error {
 	switch strings.ToLower(req.URL.Scheme) {
 	case "http":
+		// one shot transpot
 		rt.cachedTransports[addr] = &http.Transport{DialContext: rt.dialer.DialContext}
 		return nil
 	case "https":
+		// create/reuse?
 	default:
 		return fmt.Errorf("invalid URL scheme: [%v]", req.URL.Scheme)
 	}
@@ -57,7 +59,9 @@ func (rt *roundTripper) getTransport(req *http.Request, addr string) error {
 	case nil:
 		// Should never happen.
 		// panic("dialTLS returned no error when determining cachedTransports")
-		panic(fmt.Sprintf("dialTLS returned no error when determining cachedTransports - returned type: %T", c))
+		_, ok := rt.cachedTransports[addr]
+		_, okc := rt.cachedConnections[addr]
+		panic(fmt.Sprintf("dialTLS returned no error when determining cachedTransports - returned type: %T: is there cached transport now: %v, cached conn: %v", c, ok, okc))
 	default:
 		return err
 	}
