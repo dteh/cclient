@@ -20,6 +20,7 @@ var errProtocolNegotiated = errors.New("protocol negotiated")
 
 type roundTripper struct {
 	sync.Mutex
+	mux2 sync.Mutex
 
 	clientHelloId     utls.ClientHelloID
 	customClientHello *utls.ClientHelloSpec
@@ -33,6 +34,10 @@ type roundTripper struct {
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	addr := rt.getDialTLSAddr(req)
+
+	//Fixes race condition. We don't use the original mux as I'm not sure where else dialTLS is called
+	rt.mux2.Lock()
+	defer rt.mux2.Unlock()
 	if _, ok := rt.cachedTransports[addr]; !ok {
 		if err := rt.getTransport(req, addr); err != nil {
 			return nil, err
@@ -53,15 +58,12 @@ func (rt *roundTripper) getTransport(req *http.Request, addr string) error {
 		return fmt.Errorf("invalid URL scheme: [%v]", req.URL.Scheme)
 	}
 
-	c, err := rt.dialTLS(context.Background(), "tcp", addr)
+	_, err := rt.dialTLS(context.Background(), "tcp", addr)
 	switch err {
 	case errProtocolNegotiated:
 	case nil:
 		// Should never happen.
-		// panic("dialTLS returned no error when determining cachedTransports")
-		_, ok := rt.cachedTransports[addr]
-		_, okc := rt.cachedConnections[addr]
-		panic(fmt.Sprintf("dialTLS returned no error when determining cachedTransports - returned type: %T: is there cached transport now: %v, cached conn: %v", c, ok, okc))
+		panic("dialTLS returned no error when determining cachedTransports")
 	default:
 		return err
 	}
@@ -94,7 +96,7 @@ func (rt *roundTripper) dialTLS(ctx context.Context, network, addr string) (net.
 	if rt.clientHelloId == utls.HelloCustom && rt.customClientHello != nil {
 		err = conn.ApplyPreset(rt.customClientHello)
 		if err != nil {
-			panic("couldn't apply custom hello")
+			panic(fmt.Sprintf("couldn't apply custom hello: %v", err))
 		}
 	}
 	if err = conn.Handshake(); err != nil {
