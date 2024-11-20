@@ -40,3 +40,25 @@ func NewClient(clientHello utls.ClientHelloID, settings *NewClientSettings, prox
 		}, nil
 	}
 }
+
+func NewRoundTripper(clientHello utls.ClientHelloID, settings *NewClientSettings, proxyUrl ...string) (http.RoundTripper, error) {
+	var gen *utls.ClientHelloSpec
+	var err error
+	if clientHello == utls.HelloCustom && len(settings.CustomClientHello) > 0 {
+		f := utls.Fingerprinter{}
+		gen, err = f.FingerprintClientHello(settings.CustomClientHello)
+		if err != nil {
+			return nil, err
+		}
+		settings.customClientHello = gen
+	}
+	if len(proxyUrl) > 0 && len(proxyUrl[0]) > 0 {
+		dialer, err := newConnectDialer(proxyUrl[0])
+		if err != nil {
+			return nil, err
+		}
+		return newRoundTripper(clientHello, settings, dialer), nil
+	} else {
+		return newRoundTripper(clientHello, settings, proxy.Direct), nil
+	}
+}
